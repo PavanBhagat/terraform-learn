@@ -1,0 +1,19 @@
+# local .terraform dir
+
+.terraform/*
+
+# tf state files
+*.tfstate
+*.tfstate.*
+
+# tf variable files may contain sensetive data
+
+*.tfvars
+
+# diffrent practice project
+
+For AWS associate
+
+# idea
+
+.idea
