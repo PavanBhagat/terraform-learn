@@ -3,43 +3,83 @@ provider "aws" {
   secret_key = "Q/ITqHe7s3yepoiPQAo+ZHWwU9AOAmD9H6LbXiPM"
   access_key = "AKIA5A6TOYWOICLVPIW5"
 }
-variable "cidr-blocks" {
-  description = "cidr for vpc and subnet"
-  type        = list(object({ cidr_block = string, name = string }))
-}
-variable "envirnoment" {
+variable "vpc_cidr-blocks" {}
 
-}
-resource "aws_vpc" "dev-vpc" {
-  cidr_block = var.cidr-blocks[0].cidr_block
+variable "subnet_cidir-blocks" {}
+
+variable "env-prefix" {}
+
+variable "AZ" {}
+
+variable "my_ip" {}
+
+resource "aws_vpc" "myapp-vpc" {
+  cidr_block = var.vpc_cidr-blocks
   tags = {
-    Name = var.cidr-blocks[0].name
+    Name = "${var.env-prefix}-vpc"
   }
 }
 
-resource "aws_subnet" "dev-subnet-1" {
-  vpc_id            = aws_vpc.dev-vpc.id
-  cidr_block        = var.cidr-blocks[1].cidr_block
-  availability_zone = "us-east-1a"
+resource "aws_subnet" "my-app_subnet-1" {
+  vpc_id            = aws_vpc.myapp-vpc.id
+  cidr_block        = var.subnet_cidir-blocks
+  availability_zone = var.AZ
   tags = {
-    Name = var.cidr-blocks[1].name
-    envr = var.envirnoment
+    Name = "${var.env-prefix}-subnet-1"
   }
 }
 
-data "aws_vpc" "existing-test-vpc" {
-  cidr_block = "10.209.64.0/24"
-}
+resource "aws_route_table" "myapp-route-table" {
+  vpc_id = aws_vpc.myapp-vpc.id
+  route {
+    cidr_block = "0.0.0.0/0"
 
-resource "aws_subnet" "test-sb-3" {
-  cidr_block        = "10.209.64.64/26"
-  vpc_id            = data.aws_vpc.existing-test-vpc.id
-  availability_zone = "us-east-1d"
+  gateway_id = aws_internet_gateway.myapp-internet-gateway.id
+  }
 
   tags = {
-    Name = "test-sb-3-new"
+    Name = "${var.env-prefix}-rtb"
   }
 }
-output "dev-vpc-id" {
-  value = aws_subnet.dev-subnet-1.id
+
+resource "aws_internet_gateway" "myapp-internet-gateway" {
+
+  vpc_id = aws_vpc.myapp-vpc.id
+
+  tags = {
+    Name = "${var.env-prefix}-igw"
+  }
+}
+
+resource "aws_route_table_association" "myapp-rtb-asso" {
+  route_table_id = aws_route_table.myapp-route-table.id
+  subnet_id = aws_subnet.my-app_subnet-1.id
+}
+
+resource "aws_security_group" "myapp-sg" {
+  name = "myapp-sg"
+  vpc_id = aws_vpc.myapp-vpc.id
+  ingress {
+    from_port = 22
+    protocol = "tcp"
+    to_port = 22
+    cidr_blocks = [var.my_ip]
+  }
+  ingress {
+    from_port = 8080
+    protocol = "tcp"
+    to_port = 8080
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port = 0
+    protocol = "-1"
+    to_port = 0
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.env-prefix}-sg"
+  }
 }
