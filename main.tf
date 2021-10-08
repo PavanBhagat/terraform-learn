@@ -1,7 +1,5 @@
 provider "aws" {
   region     = "us-east-1"
-  secret_key = "Q/ITqHe7s3yepoiPQAo+ZHWwU9AOAmD9H6LbXiPM"
-  access_key = "AKIA5A6TOYWOICLVPIW5"
 }
 variable "vpc_cidr-blocks" {}
 
@@ -12,6 +10,12 @@ variable "env-prefix" {}
 variable "AZ" {}
 
 variable "my_ip" {}
+
+variable "instance_type" {}
+
+variable "rsa-key-location" {}
+
+variable "script-path" {}
 
 resource "aws_vpc" "myapp-vpc" {
   cidr_block = var.vpc_cidr-blocks
@@ -71,6 +75,12 @@ resource "aws_security_group" "myapp-sg" {
     to_port = 8080
     cidr_blocks = ["0.0.0.0/0"]
   }
+  ingress {
+    from_port = 80
+    protocol = "tcp"
+    to_port = 80
+    cidr_blocks = ["0.0.0.0/0"]
+  }
 
   egress {
     from_port = 0
@@ -81,5 +91,43 @@ resource "aws_security_group" "myapp-sg" {
 
   tags = {
     Name = "${var.env-prefix}-sg"
+  }
+}
+
+data "aws_ami" "latest-aws-linux-ami" {
+  most_recent = true
+  owners = ["amazon"]
+  filter {
+    name = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+  filter {
+    name = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+output "aws-public-ip" {
+  value = aws_instance.myapp-server.public_ip
+}
+
+resource "aws_key_pair" "tf-gen-key" {
+  key_name = "tf-gen-key"
+  public_key = file(var.rsa-key-location)
+}
+
+
+resource "aws_instance" "myapp-server" {
+  ami = data.aws_ami.latest-aws-linux-ami.id
+  instance_type = var.instance_type
+  subnet_id = aws_subnet.my-app_subnet-1.id
+  vpc_security_group_ids = [aws_security_group.myapp-sg.id]
+  availability_zone = var.AZ
+  key_name = aws_key_pair.tf-gen-key.key_name
+  associate_public_ip_address = true
+  user_data = file(var.script-path)
+
+  tags = {
+    Name = "${var.env-prefix}-server"
   }
 }
