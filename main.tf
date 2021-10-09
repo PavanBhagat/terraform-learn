@@ -17,6 +17,8 @@ variable "rsa-key-location" {}
 
 variable "script-path" {}
 
+/*variable "private-key-location"{}*/
+
 resource "aws_vpc" "myapp-vpc" {
   cidr_block = var.vpc_cidr-blocks
   tags = {
@@ -127,6 +129,23 @@ resource "aws_instance" "myapp-server" {
   associate_public_ip_address = true
   user_data = file(var.script-path)
 
+  /*provisioner "remote-exec" {
+    script = file("script.sh")
+  }
+
+  connection {
+    type = "ssh"
+    host = self.public_ip
+    user = "ec2-user"
+    private_key = file(var.private-key-location)
+
+  }
+
+  provisioner "file"{
+    source = "E:\\Scripts\\docker-script.sh"
+    destination = "/home/ec2-user/script.sh"
+  }
+*/
   tags = {
     Name = "${var.env-prefix}-server"
   }
