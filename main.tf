@@ -4,25 +4,25 @@ provider "aws" {
 
 
 /*variable "private-key-location"{}*/
+module "vpc" {
+  source = "terraform-aws-modules/vpc/aws"
+  cidr = var.vpc_cidr-blocks
+  name = "my-vpc"
 
-resource "aws_vpc" "myapp-vpc" {
-  cidr_block = var.vpc_cidr-blocks
+  azs             = [var.AZ]
+  public_subnets  = [var.subnet_cidir-blocks]
+  private_subnet_tags = {Name = "${var.env-prefix}-subnet-1"}
+  public_route_table_tags = {Name = "${var.env-prefix}-rtb"}
   tags = {
     Name = "${var.env-prefix}-vpc"
+
   }
 }
 
-module "my-web-module" {
-  source = "./modules/subnet"
-  subnet_cidir-blocks = var.subnet_cidir-blocks
- env-prefix = var.env-prefix
-  vpc-id = aws_vpc.myapp-vpc.id
-  AZ = var.AZ
-}
 
 module "my-web-sg" {
   source = "./modules/security-group"
-  vpc-id = aws_vpc.myapp-vpc.id
+  vpc-id = module.vpc.vpc_id
   env-prefix = var.env-prefix
 }
 
@@ -53,7 +53,7 @@ resource "aws_key_pair" "tf-gen-key" {
 resource "aws_instance" "myapp-server" {
   ami = data.aws_ami.latest-aws-linux-ami.id
   instance_type = var.instance_type
-  subnet_id = module.my-web-module.subnet-op.id
+  subnet_id = module.vpc.public_subnets[0]
   vpc_security_group_ids = [module.my-web-sg.security-group.id]
   availability_zone = var.AZ
   key_name = aws_key_pair.tf-gen-key.key_name

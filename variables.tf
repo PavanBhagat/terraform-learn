@@ -6,7 +6,6 @@ variable "env-prefix" {}
 
 variable "AZ" {}
 
-variable "my_ip" {}
 
 variable "instance_type" {}
 
